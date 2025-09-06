@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sky Controller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background-color: #1a202c; color: #e2e8f0; }
+        .control-button { transition: all 0.2s ease-in-out; }
+        .control-button:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); }
+        .control-button:active { transform: translateY(-1px); }
+        .control-group { border: 1px solid #4a5568; border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .control-group h2 { text-align: center; margin-bottom: 1rem; color: #a0aec0; font-weight: 600; }
+        .star-editor-item { background-color: #2d3748; }
+        input, textarea { background-color: #4a5568; border: 1px solid #718096; }
+        input:focus, textarea:focus { outline: none; border-color: #a0aec0; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-center">Sky Remote Control</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="control-group">
+                <h2 class="text-xl">Weather</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    <button data-group="weather" data-value="clear" class="control-button bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-4 rounded-lg">Clear</button>
+                    <button data-group="weather" data-value="cloudy" class="control-button bg-gray-500 hover:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Cloudy</button>
+                    <button data-group="weather" data-value="rainy" class="control-button bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 px-4 rounded-lg">Rain</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h2 class="text-xl">Sun</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    <button data-group="sunMode" data-value="normal" class="control-button bg-yellow-500 hover:bg-yellow-400 text-white font-bold py-3 px-4 rounded-lg">Normal Sun</button>
+                    <button data-group="sunMode" data-value="bright" class="control-button bg-yellow-300 hover:bg-yellow-200 text-black font-bold py-3 px-4 rounded-lg">Bright Sun</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h2 class="text-xl">Night Sky</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    <button data-group="moonMode" data-value="normal" class="control-button bg-gray-200 hover:bg-gray-100 text-black font-bold py-3 px-4 rounded-lg">Normal Moon</button>
+                    <button data-group="moonMode" data-value="bright" class="control-button bg-white hover:bg-gray-50 text-black font-bold py-3 px-4 rounded-lg">Bright Moon</button>
+                    <button data-group="moonMode" data-value="hidden" class="control-button bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg">No Moon</button>
+                     <div class="border-t border-gray-600 my-4"></div>
+                    <button data-group="starsMode" data-value="visible" class="control-button bg-purple-400 hover:bg-purple-300 text-black font-bold py-3 px-4 rounded-lg">Show Stars</button>
+                    <button data-group="starsMode" data-value="hidden" class="control-button bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg">No Stars</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h2 class="text-2xl">Star Editor</h2>
+            <div id="star-list" class="space-y-4">
+                <!-- Star editor items will be injected here -->
+            </div>
+            <button id="add-star" class="control-button mt-6 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg">Add a New Star</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let skyState;
+            const starListContainer = document.getElementById('star-list');
+
+            function saveState() {
+                try {
+                    localStorage.setItem('skyControlState', JSON.stringify(skyState));
+                } catch (e) {
+                    console.error("Failed to save state:", e);
+                }
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem('skyControlState');
+                if (savedState) {
+                    try {
+                        skyState = JSON.parse(savedState);
+                        // Add a check to ensure the loaded state is valid
+                        if (!skyState || !Array.isArray(skyState.stars)) {
+                            throw new Error("Invalid state structure");
+                        }
+                    } catch (e) {
+                        console.error("Failed to load state from localStorage, resetting.", e);
+                        skyState = { weather: 'clear', sunMode: 'normal', moonMode: 'normal', starsMode: 'visible', stars: [] };
+                    }
+                } else {
+                    skyState = { weather: 'clear', sunMode: 'normal', moonMode: 'normal', starsMode: 'visible', stars: [] };
+                }
+            }
+
+            function renderStarEditors() {
+                starListContainer.innerHTML = '';
+                if (!skyState || !Array.isArray(skyState.stars)) return;
+
+                skyState.stars.forEach((star, index) => {
+                    const editorEl = document.createElement('div');
+                    editorEl.className = 'star-editor-item p-4 rounded-lg space-y-3';
+                    editorEl.dataset.id = star.id;
+
+                    // Use textContent for values to prevent HTML injection issues
+                    const label = star.label || '';
+                    const title = star.title || '';
+                    const body = star.body || '';
+                    const imageURL = star.imageURL || '';
+                    const songURL = star.songURL || '';
+
+                    editorEl.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <p class="text-lg font-semibold">Star #${index + 1}: <span class="font-normal text-gray-300"></span></p>
+                            <button data-id="${star.id}" class="delete-star control-button bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-3 rounded-lg">&times;</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="text-sm text-gray-400">Label</label><input type="text" data-field="label" class="w-full p-2 rounded"></div>
+                            <div><label class="text-sm text-gray-400">Title</label><input type="text" data-field="title" class="w-full p-2 rounded"></div>
+                        </div>
+                        <div><label class="text-sm text-gray-400">Memory</label><textarea data-field="body" class="w-full p-2 rounded h-24"></textarea></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="text-sm text-gray-400">Image URL (optional)</label><input type="text" data-field="imageURL" class="w-full p-2 rounded"></div>
+                            <div><label class="text-sm text-gray-400">Song URL (optional)</label><input type="text" data-field="songURL" class="w-full p-2 rounded"></div>
+                        </div>
+                    `;
+
+                    // Safely set values and text content
+                    editorEl.querySelector('p span').textContent = label || 'New Star';
+                    editorEl.querySelector('[data-field="label"]').value = label;
+                    editorEl.querySelector('[data-field="title"]').value = title;
+                    editorEl.querySelector('[data-field="body"]').textContent = body;
+                    editorEl.querySelector('[data-field="imageURL"]').value = imageURL;
+                    editorEl.querySelector('[data-field="songURL"]').value = songURL;
+                    
+                    starListContainer.appendChild(editorEl);
+                });
+            }
+
+            document.getElementById('add-star').addEventListener('click', () => {
+                skyState.stars.push({
+                    id: Date.now(),
+                    label: "New Memory",
+                    title: "A New Title",
+                    body: "Write your memory here...",
+                    imageURL: "",
+                    songURL: "",
+                    top: `${Math.random()*80+10}%`,
+                    left: `${Math.random()*80+10}%`
+                });
+                saveState();
+                renderStarEditors();
+            });
+
+            starListContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-star')) {
+                    const idToDelete = e.target.dataset.id;
+                    skyState.stars = skyState.stars.filter(s => String(s.id) !== idToDelete);
+                    saveState();
+                    renderStarEditors();
+                }
+            });
+
+            starListContainer.addEventListener('input', (e) => {
+                const input = e.target;
+                const field = input.dataset.field;
+                const id = input.closest('.star-editor-item').dataset.id;
+                const star = skyState.stars.find(s => String(s.id) === id);
+                if (star) {
+                    star[field] = input.value;
+                    saveState();
+                    // Update header label while typing
+                    if(field === 'label') {
+                        input.closest('.star-editor-item').querySelector('p span').textContent = input.value;
+                    }
+                }
+            });
+
+            const buttons = document.querySelectorAll('.control-button');
+            buttons.forEach(button => {
+                if(button.id !== 'add-star') {
+                    button.addEventListener('click', () => {
+                        skyState[button.dataset.group] = button.dataset.value;
+                        saveState();
+                    });
+                }
+            });
+
+            // Initial Load
+            loadState();
+            renderStarEditors();
+        });
+    </script>
+</body>
+</html>
+
